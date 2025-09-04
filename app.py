@@ -424,6 +424,133 @@ def create_model_comparison_chart(model_results, filename):
     
     return img_data, chart_path
 
+# Function to create individual charts for separate downloads
+def create_individual_charts(model_results, filename):
+    """Create individual charts for separate download options"""
+    if not model_results:
+        return {}
+    
+    # Filter out models with errors
+    valid_models = {name: results for name, results in model_results.items() 
+                   if 'error' not in results}
+    
+    if not valid_models:
+        return {}
+    
+    model_names = list(valid_models.keys())
+    accuracies = [results['accuracy'] for results in valid_models.values()]
+    training_times = [results.get('training_time', 0) for results in valid_models.values()]
+    
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    chart_paths = {}
+    
+    # Chart 1: Accuracy Bar Chart
+    plt.figure(figsize=(12, 8))
+    colors_bar = plt.cm.viridis(np.linspace(0, 1, len(model_names)))
+    colors_bar = list(colors_bar)
+    colors_bar[0] = [1.0, 0.843, 0.0, 1.0]  # Gold for best model
+    
+    bars = plt.bar(model_names, accuracies, color=colors_bar, alpha=0.8, edgecolor='black', linewidth=1)
+    plt.title('Model Accuracy Comparison\nNetwork Intrusion Detection', fontsize=16, fontweight='bold', pad=20)
+    plt.ylabel('Accuracy Score', fontsize=12)
+    plt.ylim(0, 1.0)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Add accuracy labels
+    for bar, accuracy in zip(bars, accuracies):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                f'{accuracy:.3f}\n({accuracy*100:.1f}%)', ha='center', va='bottom', fontweight='bold', fontsize=10)
+    
+    plt.tight_layout()
+    accuracy_chart_path = os.path.join(charts_folder, f"accuracy_comparison_{timestamp_str}.png")
+    plt.savefig(accuracy_chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    chart_paths['accuracy'] = accuracy_chart_path
+    
+    # Chart 2: Training Time Bar Chart
+    plt.figure(figsize=(12, 8))
+    colors_time = ['#FF6B6B' if i == np.argmax(training_times) else '#4ECDC4' for i in range(len(training_times))]
+    bars2 = plt.bar(model_names, training_times, color=colors_time, alpha=0.8, edgecolor='black', linewidth=1)
+    plt.title('Training Time Comparison\nNetwork Intrusion Detection Models', fontsize=16, fontweight='bold', pad=20)
+    plt.ylabel('Training Time (seconds)', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Add time labels
+    for bar, time_val in zip(bars2, training_times):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + max(training_times)*0.02,
+                f'{time_val:.1f}s', ha='center', va='bottom', fontweight='bold', fontsize=9)
+    
+    plt.tight_layout()
+    time_chart_path = os.path.join(charts_folder, f"training_time_{timestamp_str}.png")
+    plt.savefig(time_chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    chart_paths['training_time'] = time_chart_path
+    
+    # Chart 3: Accuracy vs Training Time Scatter Plot
+    plt.figure(figsize=(10, 8))
+    scatter_colors = ['gold' if i == 0 else 'skyblue' for i in range(len(model_names))]
+    plt.scatter(training_times, accuracies, c=scatter_colors, s=200, alpha=0.7, 
+                edgecolors='black', linewidth=2)
+    
+    # Add model name labels
+    for i, name in enumerate(model_names):
+        plt.annotate(name[:10] + ('...' if len(name) > 10 else ''), 
+                    (training_times[i], accuracies[i]), 
+                    xytext=(5, 5), textcoords='offset points', fontsize=9, fontweight='bold')
+    
+    plt.title('Model Performance: Accuracy vs Training Time\nNetwork Intrusion Detection', fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Training Time (seconds)', fontsize=12)
+    plt.ylabel('Accuracy Score', fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    scatter_chart_path = os.path.join(charts_folder, f"accuracy_vs_time_{timestamp_str}.png")
+    plt.savefig(scatter_chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    chart_paths['scatter'] = scatter_chart_path
+    
+    # Chart 4: Performance Grade Pie Chart
+    plt.figure(figsize=(10, 8))
+    grade_counts = {'Excellent (>95%)': 0, 'Good (90-95%)': 0, 'Fair (80-90%)': 0, 'Poor (<80%)': 0}
+    
+    for accuracy in accuracies:
+        if accuracy > 0.95:
+            grade_counts['Excellent (>95%)'] += 1
+        elif accuracy > 0.90:
+            grade_counts['Good (90-95%)'] += 1
+        elif accuracy > 0.80:
+            grade_counts['Fair (80-90%)'] += 1
+        else:
+            grade_counts['Poor (<80%)'] += 1
+    
+    # Only show non-zero grades
+    non_zero_grades = {k: v for k, v in grade_counts.items() if v > 0}
+    
+    if non_zero_grades:
+        grade_colors = ['#2ECC40', '#01FF70', '#FFDC00', '#FF4136'][:len(non_zero_grades)]
+        wedges, texts, autotexts = plt.pie(non_zero_grades.values(), labels=non_zero_grades.keys(), 
+                                          autopct='%1.0f%%', colors=grade_colors, startangle=90)
+        
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+            autotext.set_fontsize(12)
+    
+    plt.title('Model Performance Distribution\nNetwork Intrusion Detection', fontsize=16, fontweight='bold', pad=20)
+    plt.axis('equal')
+    plt.tight_layout()
+    
+    pie_chart_path = os.path.join(charts_folder, f"performance_distribution_{timestamp_str}.png")
+    plt.savefig(pie_chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    chart_paths['pie'] = pie_chart_path
+    
+    return chart_paths
+
 # Function to create comprehensive model performance graphs
 def create_comprehensive_model_charts(model_results, filename):
     """Create multiple charts for comprehensive model analysis"""
@@ -1122,6 +1249,10 @@ def compare_models():
         # Create comprehensive model analysis dashboard
         print("📈 Creating comprehensive model analysis dashboard...")
         model_chart_data, model_chart_path = create_comprehensive_model_charts(model_results, "Default Dataset")
+        
+        # Create individual charts for separate downloads
+        print("📊 Creating individual charts...")
+        individual_chart_paths = create_individual_charts(model_results, "Default Dataset")
 
         # Create detailed analysis message
         total_count = len(test_df)
@@ -1152,6 +1283,12 @@ def compare_models():
                 .download-section {{ margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745; }}
                 .chart-actions {{ margin-top: 15px; padding: 10px; background: rgba(40, 167, 69, 0.1); border-radius: 5px; }}
                 .download-success {{ display: none; background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #c3e6cb; }}
+                .individual-downloads {{ margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8; }}
+                .download-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }}
+                .download-item {{ background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }}
+                .download-item h4 {{ margin: 0 0 10px 0; color: #495057; font-size: 14px; }}
+                .individual-btn {{ background: #17a2b8; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.3s; }}
+                .individual-btn:hover {{ background: #138496; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }}
             </style>
             <script>
                 function downloadChart(url) {{
@@ -1223,6 +1360,46 @@ def compare_models():
                                 📏 High-resolution PNG (300 DPI) • 📊 Perfect for reports and presentations • 🖼️ Includes all 4 analysis charts
                             </small>
                         </div>''' if model_chart_path else ""}
+                    </div>
+                </div>
+                
+                <div class="individual-downloads">
+                    <h3>📊 Download Individual Charts</h3>
+                    <p>Get specific charts for detailed analysis and reporting:</p>
+                    <div class="download-grid">
+                        {f'''<div class="download-item">
+                            <h4>📈 Accuracy Comparison</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">Bar chart showing model accuracy scores</p>
+                            <button class="individual-btn" onclick="downloadChart('/download_chart/{os.path.basename(individual_chart_paths.get('accuracy', '')) if individual_chart_paths.get('accuracy') else 'accuracy.png'}')">
+                                📥 Download
+                            </button>
+                        </div>''' if individual_chart_paths.get('accuracy') else ''}
+                        {f'''<div class="download-item">
+                            <h4>⏱️ Training Time</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">Training speed comparison across models</p>
+                            <button class="individual-btn" onclick="downloadChart('/download_chart/{os.path.basename(individual_chart_paths.get('training_time', '')) if individual_chart_paths.get('training_time') else 'training_time.png'}')">
+                                📥 Download
+                            </button>
+                        </div>''' if individual_chart_paths.get('training_time') else ''}
+                        {f'''<div class="download-item">
+                            <h4>🎯 Accuracy vs Time</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">Scatter plot of performance vs speed</p>
+                            <button class="individual-btn" onclick="downloadChart('/download_chart/{os.path.basename(individual_chart_paths.get('scatter', '')) if individual_chart_paths.get('scatter') else 'scatter.png'}')">
+                                📥 Download
+                            </button>
+                        </div>''' if individual_chart_paths.get('scatter') else ''}
+                        {f'''<div class="download-item">
+                            <h4>🥧 Performance Distribution</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">Pie chart of performance categories</p>
+                            <button class="individual-btn" onclick="downloadChart('/download_chart/{os.path.basename(individual_chart_paths.get('pie', '')) if individual_chart_paths.get('pie') else 'pie.png'}')">
+                                📥 Download
+                            </button>
+                        </div>''' if individual_chart_paths.get('pie') else ''}
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(23, 162, 184, 0.1); border-radius: 5px;">
+                        <small style="color: #666;">
+                            📏 Each chart is high-resolution (300 DPI) • 🖼️ Perfect for reports and presentations • 📊 Individual focus for specific analysis
+                        </small>
                     </div>
                 </div>
                 
