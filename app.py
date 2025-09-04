@@ -1143,11 +1143,54 @@ def compare_models():
                 .accuracy {{ font-size: 24px; font-weight: bold; color: #28a745; }}
                 .rank {{ display: inline-block; background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 10px; }}
                 .rank.first {{ background: #ffd700; color: #333; }}
-                .chart-container {{ text-align: center; margin: 30px 0; }}
+                .chart-container {{ text-align: center; margin: 30px 0; position: relative; }}
                 .stats {{ background: #e9ecef; padding: 20px; border-radius: 8px; margin: 20px 0; }}
                 .back-link {{ display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; }}
                 .back-link:hover {{ background: #0056b3; }}
+                .download-btn {{ display: inline-block; background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; margin: 10px 5px; font-weight: bold; transition: background-color 0.3s; border: none; cursor: pointer; font-size: 14px; }}
+                .download-btn:hover {{ background: #218838; color: white; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }}
+                .download-section {{ margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745; }}
+                .chart-actions {{ margin-top: 15px; padding: 10px; background: rgba(40, 167, 69, 0.1); border-radius: 5px; }}
+                .download-success {{ display: none; background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #c3e6cb; }}
             </style>
+            <script>
+                function downloadChart(url) {{
+                    // Show loading state
+                    const btn = event.target;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '⬇️ Downloading...';
+                    btn.style.pointerEvents = 'none';
+                    
+                    // Create download link
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'model_comparison_chart_' + new Date().toISOString().slice(0,19).replace(/:/g, '-') + '.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Show success message
+                    setTimeout(() => {{
+                        btn.innerHTML = '✅ Downloaded!';
+                        const successMsg = document.getElementById('download-success');
+                        if (successMsg) {{
+                            successMsg.style.display = 'block';
+                            setTimeout(() => {{
+                                successMsg.style.display = 'none';
+                                btn.innerHTML = originalText;
+                                btn.style.pointerEvents = 'auto';
+                            }}, 3000);
+                        }} else {{
+                            setTimeout(() => {{
+                                btn.innerHTML = originalText;
+                                btn.style.pointerEvents = 'auto';
+                            }}, 2000);
+                        }}
+                    }}, 500);
+                    
+                    return false;
+                }}
+            </script>
         </head>
         <body>
             <div class="container">
@@ -1164,8 +1207,23 @@ def compare_models():
                     <p><strong>📈 Analysis Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 
-                <div class="chart-container">
-                    {"<img src='data:image/png;base64," + model_chart_data + "' style='max-width: 100%; height: auto;' />" if model_chart_data else "<p>Chart generation failed</p>"}
+                <div class="download-section">
+                    <h3>📈 Model Performance Visualization</h3>
+                    <div class="chart-container">
+                        {"<img src='data:image/png;base64," + model_chart_data + "' style='max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;' />" if model_chart_data else "<p>Chart generation failed</p>"}
+                        {f'''<div class="chart-actions">
+                            <p><strong>📊 Chart Information:</strong> Comprehensive model analysis with accuracy comparison, training time, and performance distribution</p>
+                            <button class="download-btn" onclick="downloadChart('/download_chart/{os.path.basename(model_chart_path) if model_chart_path else 'chart.png'}')">
+                                📥 Download Chart as PNG
+                            </button>
+                            <div id="download-success" class="download-success">
+                                ✅ Chart downloaded successfully! Check your downloads folder.
+                            </div>
+                            <small style="display: block; margin-top: 10px; color: #666;">
+                                📏 High-resolution PNG (300 DPI) • 📊 Perfect for reports and presentations • 🖼️ Includes all 4 analysis charts
+                            </small>
+                        </div>''' if model_chart_path else ""}
+                    </div>
                 </div>
                 
                 <h3>🏆 Detailed Model Results</h3>
@@ -1214,6 +1272,19 @@ def compare_models():
         error_message = f"❌ An error occurred during model comparison: {str(e)}"
         print(error_message)
         return f"<h1>Error</h1><p>{error_message}</p><p><a href='/'>Back to Home</a></p>"
+
+@app.route('/download_chart/<filename>')
+def download_chart(filename):
+    """Download chart as PNG file"""
+    try:
+        chart_file_path = os.path.join(charts_folder, filename)
+        if os.path.exists(chart_file_path):
+            from flask import send_file
+            return send_file(chart_file_path, as_attachment=True, download_name=f"model_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+        else:
+            return "Chart file not found", 404
+    except Exception as e:
+        return f"Error downloading chart: {str(e)}", 500
 
 if __name__ == '__main__':
     print("🚀 Starting Network Intrusion Detection Flask App...")
