@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# H2O
+h2o_tmp/
+*.log
+
+# Data files (keep sample data but ignore large datasets)
+*.csv
+!sample_data.csv
+
+# Model files
+*.joblib
+saved_model/
+
+# Virtual environments
+venv/
+env/
+nids_env/
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+results/
+charts/
+malicious_data/
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Email credentials (security)
+# Note: Replace with environment variables in production
